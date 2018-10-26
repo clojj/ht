@@ -8,3 +8,4 @@
 socket.close()
 println("socket CLOSED")
 ```
+--> https://github.com/JetBrains/intellij-sdk-docs/tree/master/code_samples/plugin_sample
