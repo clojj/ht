@@ -14,6 +14,19 @@
     <depends>com.intellij.modules.lang</depends>
     -->
 
+    <project-components>
+        <component>
+            <!-- Interface and implementation classes are the same -->
+            <interface-class>HtProjectComponentImpl</interface-class>
+            <implementation-class>HtProjectComponentImpl</implementation-class>
+            <!-- If the "workspace" option is set "true", the component saves its state to the .iws file
+              instead of the .ipr file.  Note that the <option> element is used only if the component implements the JDOMExternalizable interface. Otherwise, the use of the <option> element takes no effect.-->
+            <option name="workspace" value="true"/>
+            <!-- If the "loadForDefaultProject" tag is present, the project component is instantiated also for the default project. -->
+            <!--<loadForDefaultProject/>-->
+        </component>
+    </project-components>
+
     <extensions defaultExtensionNs="com.intellij">
         <!-- Add your extensions here -->
     </extensions>
@@ -26,4 +39,5 @@
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift 1"/>
         </action>
     </actions>
+
 </idea-plugin>
