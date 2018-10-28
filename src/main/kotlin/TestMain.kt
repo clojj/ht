@@ -1,3 +1,4 @@
+import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import io.ktor.network.selector.ActorSelectorManager
 import io.ktor.network.sockets.Socket
@@ -5,11 +6,13 @@ import io.ktor.network.sockets.aSocket
 import io.ktor.network.sockets.openReadChannel
 import io.ktor.network.sockets.openWriteChannel
 import io.ktor.util.KtorExperimentalAPI
+import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.io.ByteReadChannel
 import kotlinx.coroutines.io.ByteWriteChannel
 import kotlinx.coroutines.io.readUTF8Line
 import kotlinx.coroutines.io.writeStringUtf8
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.net.InetSocketAddress
 import java.util.concurrent.Executors
@@ -22,30 +25,68 @@ fun main() {
     val exec = Executors.newCachedThreadPool()
     val selector = ActorSelectorManager(exec.asCoroutineDispatcher())
 
-    runBlocking {
+    var socket: Socket? = null
+    var output: ByteWriteChannel? = null
 
-        val socket: Socket= aSocket(selector).tcp().connect(InetSocketAddress("127.0.0.1", 4123))
-        println("socket created: $socket")
-        val input: ByteReadChannel = socket.openReadChannel()
-        val output: ByteWriteChannel = socket.openWriteChannel(autoFlush = true)
+    Runtime.getRuntime().addShutdownHook(Thread(Runnable {
+        exit(output, gson, socket)
+    }))
 
-        val addPackagesCommand = AddPackagesCommand(addedPathes = listOf("./src", "./app"))
-        output.writeStringUtf8(gson.toJson(addPackagesCommand))
+    try {
+        runBlocking {
+            socket = aSocket(selector).tcp().connect(InetSocketAddress("127.0.0.1", 4123))
+            println("SOCKET CREATED")
 
-        println("Server said: '${input.readUTF8Line()}'")
-        println("Server said: '${input.readUTF8Line()}'")
-        println("Server said: '${input.readUTF8Line()}'")
+            val input: ByteReadChannel? = socket?.openReadChannel()
+            launch {
+                while (true) {
+                    System.err.println("Server said: '${input?.readUTF8Line()}'")
+                }
+            }
 
-        val refactoringCommand = RefactoringCommand(
-            refactoring = "ExtractBinding",
-            editorSelection = "38:45-38:94",
-            modulePath = "DepTree.hs",
-            details = listOf("newFunABC'")
-        )
-        output.writeStringUtf8(gson.toJson(refactoringCommand))
+            output = socket?.openWriteChannel(autoFlush = true)
 
-        println("Server said: '${input.readUTF8Line()}'")
+            val addPackagesCommand = AddPackagesCommand(addedPathes = listOf("./src", "./app"))
+            output?.writeStringUtf8(gson.toJson(addPackagesCommand))
 
+            doRefactoring(output, gson)
+            launch {
+                while (true) {
+                    readLine()
+                    doRefactoring(output, gson)
+                }
+            }
+
+        }
+
+    } finally {
+        exit(output, gson, socket)
     }
 
+}
+
+private suspend fun doRefactoring(
+    output: ByteWriteChannel?,
+    gson: Gson
+): Unit? {
+    val refactoringCommand = RefactoringCommand(
+        refactoring = "ExtractBinding",
+        editorSelection = "38:45-38:94",
+        modulePath = "DepTree.hs",
+        details = listOf("newFunABC'")
+    )
+    return output?.writeStringUtf8(gson.toJson(refactoringCommand))
+}
+
+private fun exit(
+    output: ByteWriteChannel?,
+    gson: Gson,
+    socket: Socket?
+) {
+    runBlocking {
+        val disconnectCommand = DisconnectCommand(contents = emptyList())
+        output?.writeStringUtf8(gson.toJson(disconnectCommand))
+    }
+
+    socket?.close()
 }
