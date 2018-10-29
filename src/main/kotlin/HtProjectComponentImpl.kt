@@ -7,6 +7,8 @@ import io.ktor.util.KtorExperimentalAPI
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.io.ByteReadChannel
 import kotlinx.coroutines.io.ByteWriteChannel
+import kotlinx.coroutines.io.readUTF8Line
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.net.InetSocketAddress
 import java.util.concurrent.Executors
@@ -28,7 +30,7 @@ object HtProjectComponentImpl : HtProjectComponent {
     override fun projectOpened() {
         super.projectOpened()
 
-        val exec = Executors.newCachedThreadPool()
+        val exec = Executors.newFixedThreadPool(3)
         val selector = ActorSelectorManager(exec.asCoroutineDispatcher())
 
         runBlocking {
@@ -37,6 +39,12 @@ object HtProjectComponentImpl : HtProjectComponent {
             println("socket created: $socket")
             input = socket.openReadChannel()
             output = socket.openWriteChannel(autoFlush = true)
+
+            launch {
+                while (true) {
+                    println("Server said: '${input.readUTF8Line()}'")
+                }
+            }
 
         }
     }

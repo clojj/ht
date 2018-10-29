@@ -1,3 +1,5 @@
+package commands
+
 data class RefactoringCommand(
     val tag: String = "PerformRefactoring",
     val refactoring: String,
